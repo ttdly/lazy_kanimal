@@ -34,6 +34,7 @@ pub fn read() -> Option<GlobalConfig>{
 }
 
 pub fn write(){
+  println!("{:-^30}","创建配置文件");
   let cli: String = Input::with_theme(&ColorfulTheme::default())
     .with_prompt("输入完整的 kanimal_cli 路径")
     .interact_text()

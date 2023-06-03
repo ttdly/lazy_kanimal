@@ -10,9 +10,26 @@ use crate::file_util::read_kanimal_list;
 mod config_util;
 mod file_util;
 
+fn banner() {
+  println!(r#"
+ _
+| | __ _ _____   _
+| |/ _` |_  / | | |
+| | (_| |/ /| |_| |
+|_|\__,_/___|\__, |
+             |___/
+ _               _                 _
+| | ____ _ _ __ (_)_ __ ___   __ _| |
+| |/ / _` | '_ \| | '_ ` _ \ / _` | |
+|   < (_| | | | | | | | | | | (_| | |
+|_|\_\__,_|_| |_|_|_| |_| |_|\__,_|_|
 
+                  v1.0.0  MIT  @ttdly"#);
+  println!()
+}
 
 fn main() {
+  banner();
   let config:GlobalConfig;
   // 判断配置文件是否存在
   if !Path::new("config.yml").exists() {
