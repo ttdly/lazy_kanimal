@@ -3,10 +3,13 @@ use std::path::Path;
 use std::process::{Command, exit};
 use dialoguer::{Select};
 use dialoguer::theme::ColorfulTheme;
+
 use crate::config_util::{read, GlobalConfig, write};
 use crate::file_util::read_kanimal_list;
 
 mod config_util;
+mod file_util;
+
 
 
 fn main() {
@@ -39,7 +42,7 @@ fn main_app(config:&GlobalConfig){
     "退出"
   ];
   let selection = Select::with_theme(&ColorfulTheme::default())
-    .with_prompt("请选择操作：\n")
+    .with_prompt("请选择操作：")
     .default(0)
     .items(&selections[..])
     .interact_opt()
@@ -63,6 +66,62 @@ fn main_app(config:&GlobalConfig){
   }
 }
 
-fn scml_kanimal(_config: &GlobalConfig){
+fn scml_kanimal(config: &GlobalConfig){
+  let kanimal_map = read_kanimal_list(config);
+  let mut selections = vec![];
+  for (key,_value) in &kanimal_map {
+    selections.push(key);
+  }
 
+  let selection = Select::with_theme(&ColorfulTheme::default())
+    .with_prompt("选择需要转换为 scml 的文件：")
+    .items(&selections[..])
+    .default(0)
+    .interact_opt()
+    .unwrap();
+  let key = selections[selection.unwrap()];
+  let kanimal = kanimal_map.get(key).unwrap();
+  let scml_path = Path::new(&config.scml).join(key);
+  if scml_path.exists() {
+    fs::remove_dir_all(&scml_path).expect("移除目标文件夹失败");
+  }
+  println!("等待执行结果……\n{:-^30}","=START=");
+  let result = Command::new(&config.cli).args([
+    "scml",
+    &kanimal.img,
+    &rename_to_bytes(&kanimal.build),
+    &rename_to_bytes(&kanimal.anim),
+    "-o",
+    scml_path.to_str().unwrap()
+  ]).output();
+
+  match result {
+    Ok(out) => {
+      if out.status.success() {
+        println!("{}{:-^30}",String::from_utf8(out.stdout).unwrap(),"=END=");
+      } else {
+        println!("错误：kanimal_cli 调用失败");
+        exit(5);
+      }
+    },
+    Err(err) => {
+      println!("{}",err);
+      exit(5)
+    }
+  }
+}
+
+fn rename_to_bytes(file:&String) -> String{
+  let path = Path::new(file);
+  let extension = path.extension().unwrap().to_str().unwrap();
+  if extension == "bytes" {
+    return file.clone();
+  }
+  let bytes = file.replace(extension, "bytes");
+  if fs::rename(file, &bytes).is_ok() {
+    bytes
+  } else {
+    println!("文件重命名失败");
+    exit(5);
+  }
 }
