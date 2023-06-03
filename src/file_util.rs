@@ -90,3 +90,18 @@ pub fn read_kanimal_list(config:&GlobalConfig) -> HashMap<String,Kanimal>{
   }
   kanimal_map
 }
+
+
+pub fn _read_scml_list(config:&GlobalConfig) -> HashMap<String,String>{
+  let dir = &config.scml;
+  let mut scml_map:HashMap<String,String> = HashMap::new();
+  let scml = OsStr::new("scml");
+  for entry in WalkDir::new(dir).into_iter().filter_map(|e| e.ok()){
+    if entry.path().is_file() && entry.path().extension() == Some(&scml) {
+      let title = entry.path().file_stem().unwrap().to_str().unwrap();
+      scml_map.insert(String::from(title), String::from(entry.path().to_str().unwrap()));
+    }
+  }
+  scml_map
+}
+

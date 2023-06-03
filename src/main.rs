@@ -1,11 +1,11 @@
 use std::fs;
 use std::path::Path;
-use std::process::{Command, exit};
+use std::process::{Command, exit, Output};
 use dialoguer::{Select};
 use dialoguer::theme::ColorfulTheme;
 
 use crate::config_util::{read, GlobalConfig, write};
-use crate::file_util::read_kanimal_list;
+use crate::file_util::{_read_scml_list, read_kanimal_list};
 
 mod config_util;
 mod file_util;
@@ -53,8 +53,8 @@ fn main() {
 
 fn main_app(config:&GlobalConfig){
   let selections = vec![
-    "kanimal -> scml",
     "scml -> kanimal",
+    "kanimal -> scml",
     "重写配置文件",
     "退出"
   ];
@@ -69,7 +69,7 @@ fn main_app(config:&GlobalConfig){
       scml_kanimal(config);
     },
     Some(1) => {
-      println!("选择了2");
+      kanimal_scml(config)
     },
     Some(2) => {
       write();
@@ -83,7 +83,7 @@ fn main_app(config:&GlobalConfig){
   }
 }
 
-fn scml_kanimal(config: &GlobalConfig){
+fn kanimal_scml(config: &GlobalConfig){
   let kanimal_map = read_kanimal_list(config);
   let mut selections = vec![];
   for (key,_value) in &kanimal_map {
@@ -112,20 +112,7 @@ fn scml_kanimal(config: &GlobalConfig){
     scml_path.to_str().unwrap()
   ]).output();
 
-  match result {
-    Ok(out) => {
-      if out.status.success() {
-        println!("{}{:-^30}",String::from_utf8(out.stdout).unwrap(),"=END=");
-      } else {
-        println!("错误：kanimal_cli 调用失败");
-        exit(5);
-      }
-    },
-    Err(err) => {
-      println!("{}",err);
-      exit(5)
-    }
-  }
+  out_result(result.unwrap())
 }
 
 fn rename_to_bytes(file:&String) -> String{
@@ -141,4 +128,44 @@ fn rename_to_bytes(file:&String) -> String{
     println!("文件重命名失败");
     exit(5);
   }
+}
+
+fn scml_kanimal(config:&GlobalConfig){
+  let scml_map = _read_scml_list(config);
+  let mut selections = vec![];
+  for (key,_value) in &scml_map {
+    selections.push(key);
+  }
+
+  let selection = Select::with_theme(&ColorfulTheme::default())
+    .with_prompt("选择需要转换为 kanimal 的文件：")
+    .items(&selections[..])
+    .default(0)
+    .interact_opt()
+    .unwrap();
+  let key = selections[selection.unwrap()];
+  let scml = scml_map.get(key).unwrap();
+  let kanimal_path = Path::new(&config.kanimal).join(key);
+  if kanimal_path.exists() {
+    fs::remove_dir_all(&kanimal_path).expect("移除目标文件夹失败");
+  }
+  println!("等待执行结果……\n{:-^30}","=START=");
+  let result = Command::new(&config.cli).args([
+    "kanim",
+    &scml,
+    "-o",
+    kanimal_path.to_str().unwrap()
+  ]).output();
+
+  out_result(result.unwrap())
+}
+
+fn out_result(result:Output){
+  if !result.stdout.is_empty() {
+    println!("{}",String::from_utf8(result.stdout).unwrap());
+  } else {
+    println!("错误：kanimal_cli 调用失败\n{}",String::from_utf8(result.stderr).unwrap());
+    exit(5);
+  }
+  println!("{:-^30}","=END=");
 }
